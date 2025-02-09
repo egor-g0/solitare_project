@@ -1,13 +1,7 @@
 import os
 import sys
 import pygame
-
-pygame.init()
-screen = pygame.display.set_mode((900, 800))
-fps = 60
-clock = pygame.time.Clock()
-
-
+import random
 
 def load_image(name, colorkey=None):
     fullname = os.path.join('data', name)
@@ -24,6 +18,15 @@ def load_image(name, colorkey=None):
         image = image.convert_alpha()
     return image
 
+pygame.init()
+pygame.display.set_caption('Косынка')
+size = width, height = 1000, 1000
+screen = pygame.display.set_mode(size)
+fps = 50
+clock = pygame.time.Clock()
+cards = []
+fon = load_image('fon.jpg')
+card_sprites = pygame.sprite.Group()
 class Window:
     def __init__(self):
         pass
@@ -31,15 +34,34 @@ class Window:
     def show(self):
         image = pygame.image.load('fon.jpg')
         screen.blit(image, (0, 0))
-        '''нужен код для показывания очков, набранных игроком'''
 
-class Card:
-    pass
+cards = []
+
+class Card(pygame.sprite.Sprite):
+    def __init__(self, suit, rank):
+        self.suit = suit
+        self.rank = rank
+        self.image = load_image("cards/" + str(rank) + '.' + str(suit) + ".jpg")
+        self.rect = self.image.get_rect()
+
+    def show(self, a, b):
+        self.rect.x = a
+        self.rect.y = b
+        print(self.rect)
+
+
+
 def generate_cards():
+    for i in range(1, 13):
+        for j in range(1, 4):
+            card = Card(j, i)
+            cards.append(card)
+    k = 0
     for i in range(1, 8):
         for j in range(i):
-            pygame.draw.rect(screen, (100, 100, 100), (65 + 110 * (i - 1), 210 + 20 * j, 70, 120))
-            '''вместо прямоугольников нужно реализовать генерацию карт'''
+
+            cards[k].show(65 + 110 * (i - 1), 210 + 20 * j)
+            k += 1
 
 if __name__ == '__main__':
     window = Window()
@@ -49,8 +71,8 @@ if __name__ == '__main__':
             if event.type == pygame.QUIT:
                 running = False
         screen.fill((0, 255, 255))
-        window.show()
         generate_cards()
+        window.show()
         pygame.display.flip()
         clock.tick(fps)
     pygame.quit()
