@@ -9,7 +9,7 @@ COLUMNS_START_Y = 250
 COLUMN_SPACING = 150
 CARD_OFFSET_Y = 30
 BACK_IMAGE = pygame.image.load("data/cards/back.png")
-BACK_IMAGE = pygame.transform.scale(BACK_IMAGE, (CARD_WIDTH, CARD_HEIGHT))
+BACK_IMAGE = pygame.transform.smoothscale(BACK_IMAGE, (CARD_WIDTH, CARD_HEIGHT))
 
 
 class Window:
@@ -24,10 +24,12 @@ class Window:
 
 class Card:
     def __init__(self, suit, rank, x, y, face_up=False):
+        self.x = x
+        self.y = y
         self.suit = suit
         self.rank = rank
         self.image = pygame.image.load(f"data/cards/{rank}{suit}.png")
-        self.image = pygame.transform.scale(self.image, (CARD_WIDTH, CARD_HEIGHT))
+        self.image = pygame.transform.smoothscale(self.image, (CARD_WIDTH, CARD_HEIGHT))
         self.face_up = face_up
         self.rect = self.image.get_rect(topleft=(x, y))
 
@@ -37,6 +39,9 @@ class Card:
             screen.blit(self.image, self.rect.topleft)
         else:
             screen.blit(BACK_IMAGE, self.rect.topleft)
+
+    def is_clicked(self, pos):
+        return self.rect.collidepoint(pos)
 
 
 def create_deck():
@@ -53,10 +58,9 @@ def distribute_cards(deck):
     for i in range(7):
         for j in range(i + 1):
             card = deck[index]
-            card.rect.topleft = (
-                COLUMNS_START_X + i * COLUMN_SPACING,
-                COLUMNS_START_Y + j * CARD_OFFSET_Y
-            )
+            x = card.x = COLUMNS_START_X + i * COLUMN_SPACING
+            y = card.y = COLUMNS_START_Y + j * CARD_OFFSET_Y
+            card.rect.topleft = (x, y)
             if i == j:
                 card.face_up = True
             columns[i].append(card)
@@ -66,7 +70,7 @@ def distribute_cards(deck):
 
 pygame.init()
 pygame.display.set_caption('Косынка')
-fps = 50
+fps = 120
 clock = pygame.time.Clock()
 card_sprites = pygame.sprite.Group()
 
@@ -78,12 +82,43 @@ if __name__ == '__main__':
     running = True
     window.show()
     columns = distribute_cards(deck)
+    selected_card = None
+    offset_x = 0
+    offset_y = 0
+    dragging = False
+
     while running:
+
+        screen.blit(window.image, (0, 0))
+        for i in deck:
+            i.show()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        for i in deck:
-            i.show()
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:  # начало перетаскивания
+                mouse_pos = event.pos
+                for column in columns:
+                    for card in reversed(column):
+                        if card.is_clicked(mouse_pos) and card.face_up:
+                            selected_card = card
+                            dragging = True
+                            offset_x = selected_card.x - event.pos[0]
+                            offset_y = selected_card.y - event.pos[1]
+
+            elif event.type == pygame.MOUSEBUTTONUP:  # конец перетаскивания
+                dragging = False
+
+            elif event.type == pygame.MOUSEMOTION:  # перетаскивание
+                if dragging:
+                    selected_card.x = event.pos[0] + offset_x
+                    selected_card.y = event.pos[1] + offset_y
+
+        if selected_card is not None:
+            selected_card.rect.x = selected_card.x
+            selected_card.rect.y = selected_card.y
+            screen.blit(selected_card.image, selected_card.rect.topleft)
 
         pygame.display.flip()
         clock.tick(fps)
