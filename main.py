@@ -1,56 +1,90 @@
 import os
 import sys
 import pygame
+from random import shuffle
 
-pygame.init()
-screen = pygame.display.set_mode((900, 800))
-fps = 60
-clock = pygame.time.Clock()
+CARD_WIDTH, CARD_HEIGHT = 120, 175
+COLUMNS_START_X = 20
+COLUMNS_START_Y = 250
+COLUMN_SPACING = 150
+CARD_OFFSET_Y = 30
+BACK_IMAGE = pygame.image.load("data/cards/back.png")
+BACK_IMAGE = pygame.transform.scale(BACK_IMAGE, (CARD_WIDTH, CARD_HEIGHT))
 
-
-
-def load_image(name, colorkey=None):
-    fullname = os.path.join('data', name)
-    if not os.path.isfile(fullname):
-        print(f"Файл с изображением '{fullname}' не найден")
-        sys.exit()
-    image = pygame.image.load(fullname)
-    if colorkey is not None:
-        image = image.convert()
-        if colorkey == -1:
-            colorkey = image.get_at((0, 0))
-        image.set_colorkey(colorkey)
-    else:
-        image = image.convert_alpha()
-    return image
 
 class Window:
     def __init__(self):
-        pass
+        self.image = pygame.image.load('data/fon2.jpg')
+        self.x = self.image.get_width()
+        self.y = self.image.get_height()
 
     def show(self):
-        image = pygame.image.load('fon.jpg')
-        screen.blit(image, (0, 0))
-        '''нужен код для показывания очков, набранных игроком'''
+        screen.blit(self.image, (0, 0))
+
 
 class Card:
-    pass
-def generate_cards():
-    for i in range(1, 8):
-        for j in range(i):
-            pygame.draw.rect(screen, (100, 100, 100), (65 + 110 * (i - 1), 210 + 20 * j, 70, 120))
-            '''вместо прямоугольников нужно реализовать генерацию карт'''
+    def __init__(self, suit, rank, x, y, face_up=False):
+        self.suit = suit
+        self.rank = rank
+        self.image = pygame.image.load(f"data/cards/{rank}{suit}.png")
+        self.image = pygame.transform.scale(self.image, (CARD_WIDTH, CARD_HEIGHT))
+        self.face_up = face_up
+        self.rect = self.image.get_rect(topleft=(x, y))
+
+    def show(self):
+        # print(self.rect)
+        if self.face_up:
+            screen.blit(self.image, self.rect.topleft)
+        else:
+            screen.blit(BACK_IMAGE, self.rect.topleft)
+
+
+def create_deck():
+    suits = ['C', 'D', 'H', 'S']
+    ranks = list(range(6, 15))
+    deck = [Card(suit, rank, 20, 10, face_up=False) for suit in suits for rank in ranks]
+    shuffle(deck)
+    return deck
+
+
+def distribute_cards(deck):
+    columns = [[] for _ in range(7)]
+    index = 0
+    for i in range(7):
+        for j in range(i + 1):
+            card = deck[index]
+            card.rect.topleft = (
+                COLUMNS_START_X + i * COLUMN_SPACING,
+                COLUMNS_START_Y + j * CARD_OFFSET_Y
+            )
+            if i == j:
+                card.face_up = True
+            columns[i].append(card)
+            index += 1
+    return columns
+
+
+pygame.init()
+pygame.display.set_caption('Косынка')
+fps = 50
+clock = pygame.time.Clock()
+card_sprites = pygame.sprite.Group()
 
 if __name__ == '__main__':
+    deck = create_deck()
     window = Window()
+    size = width, height = window.x, window.y
+    screen = pygame.display.set_mode(size)
     running = True
+    window.show()
+    columns = distribute_cards(deck)
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        screen.fill((0, 255, 255))
-        window.show()
-        generate_cards()
+        for i in deck:
+            i.show()
+
         pygame.display.flip()
         clock.tick(fps)
     pygame.quit()
