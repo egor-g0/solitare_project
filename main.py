@@ -23,7 +23,8 @@ class Window:
 
 
 class Card:
-    def __init__(self, suit, rank, x, y, face_up=False):
+    def __init__(self, suit, rank, x, y, face_up=False, column=None):
+        self.column = column
         self.x = x
         self.y = y
         self.suit = suit
@@ -47,7 +48,7 @@ class Card:
 def create_deck():
     suits = ['C', 'D', 'H', 'S']
     ranks = list(range(6, 15))
-    deck = [Card(suit, rank, 20, 10, face_up=False) for suit in suits for rank in ranks]
+    deck = [Card(suit, rank, 20, 10, face_up=False, column=None) for suit in suits for rank in ranks]
     shuffle(deck)
     return deck
 
@@ -63,8 +64,13 @@ def distribute_cards(deck):
             card.rect.topleft = (x, y)
             if i == j:
                 card.face_up = True
+            card.column = i
             columns[i].append(card)
             index += 1
+    for i in deck:
+        if i == 0:
+            deck.remove(i)
+            break
     return columns
 
 
@@ -90,6 +96,9 @@ if __name__ == '__main__':
     while running:
 
         screen.blit(window.image, (0, 0))
+        for i in columns:
+            for j in i:
+                j.show()
         for i in deck:
             i.show()
 
@@ -108,6 +117,18 @@ if __name__ == '__main__':
                             offset_y = selected_card.y - event.pos[1]
 
             elif event.type == pygame.MOUSEBUTTONUP:  # конец перетаскивания
+                sp = []
+                for column in columns:
+                    sp.append(column[-1].rect)
+                spp = [selected_card.rect.colliderect(i) for i in sp]
+                len_sp = len([x for x in spp if x == True])
+                if len_sp > 1:
+                    new_column = [i for i in range(len(spp)) if spp[i] == True and i != selected_card.column][0]
+                    columns[new_column].append(selected_card)
+                    columns[selected_card.column].remove(selected_card)
+                    selected_card.x = columns[new_column][0].x
+                    selected_card.y = COLUMNS_START_Y + (len(columns[new_column]) - 1) * CARD_OFFSET_Y
+
                 dragging = False
 
             elif event.type == pygame.MOUSEMOTION:  # перетаскивание
