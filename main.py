@@ -89,6 +89,7 @@ if __name__ == '__main__':
     window.show()
     columns = distribute_cards(deck)
     selected_card = None
+    start_x, start_y = None, None
     offset_x = 0
     offset_y = 0
     dragging = False
@@ -96,11 +97,15 @@ if __name__ == '__main__':
     while running:
 
         screen.blit(window.image, (0, 0))
+        empty_image = pygame.image.load(f"data/cards/empty.png")
+        empty_image = pygame.transform.smoothscale(empty_image, (CARD_WIDTH, CARD_HEIGHT))
+        for i in range(7):
+            screen.blit(empty_image, (COLUMNS_START_X + i * COLUMN_SPACING, COLUMNS_START_Y))
+        for i in deck:
+            i.show()
         for i in columns:
             for j in i:
                 j.show()
-        for i in deck:
-            i.show()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -112,24 +117,34 @@ if __name__ == '__main__':
                     for card in reversed(column):
                         if card.is_clicked(mouse_pos) and card.face_up:
                             selected_card = card
+                            start_x, start_y = selected_card.x, selected_card.y
                             dragging = True
                             offset_x = selected_card.x - event.pos[0]
                             offset_y = selected_card.y - event.pos[1]
 
-            elif event.type == pygame.MOUSEBUTTONUP:  # конец перетаскивания
+            elif event.type == pygame.MOUSEBUTTONUP and selected_card is not None:  # конец перетаскивания
                 sp = []
                 for column in columns:
-                    sp.append(column[-1].rect)
-                spp = [selected_card.rect.colliderect(i) for i in sp]
+                    sp.append(column[-1].rect if len(column) > 0 else True)
+                spp = [selected_card.rect.colliderect(i) for i in sp if i != True]
                 len_sp = len([x for x in spp if x == True])
                 if len_sp > 1:
+                    start_column = selected_card.column
                     new_column = [i for i in range(len(spp)) if spp[i] == True and i != selected_card.column][0]
                     columns[new_column].append(selected_card)
                     columns[selected_card.column].remove(selected_card)
+
+                    if len(columns[selected_card.column]) > 0:
+                        columns[selected_card.column][-1].face_up = True
+
+                    selected_card.column = new_column
                     selected_card.x = columns[new_column][0].x
                     selected_card.y = COLUMNS_START_Y + (len(columns[new_column]) - 1) * CARD_OFFSET_Y
-
+                else:
+                    selected_card.x = start_x
+                    selected_card.y = start_y
                 dragging = False
+
 
             elif event.type == pygame.MOUSEMOTION:  # перетаскивание
                 if dragging:
@@ -143,4 +158,5 @@ if __name__ == '__main__':
 
         pygame.display.flip()
         clock.tick(fps)
+
     pygame.quit()
