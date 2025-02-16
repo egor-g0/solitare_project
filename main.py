@@ -44,6 +44,13 @@ class Card:
     def is_clicked(self, pos):
         return self.rect.collidepoint(pos)
 
+    def is_opposite_color(self, other_card):
+        return (self.suit in ['C', 'S'] and other_card.suit in ['D', 'H']) or \
+            (self.suit in ['D', 'H'] and other_card.suit in ['C', 'S'])
+
+    def is_one_rank_higher(self, other_card):
+        return self.rank == other_card.rank - 1
+
 
 def create_deck():
     suits = ['C', 'D', 'H', 'S']
@@ -131,15 +138,26 @@ if __name__ == '__main__':
                 if len_sp > 1:
                     start_column = selected_card.column
                     new_column = [i for i in range(len(spp)) if spp[i] == True and i != selected_card.column][0]
-                    columns[new_column].append(selected_card)
-                    columns[selected_card.column].remove(selected_card)
 
-                    if len(columns[selected_card.column]) > 0:
-                        columns[selected_card.column][-1].face_up = True
+                    target_card = columns[new_column][-1]
 
-                    selected_card.column = new_column
-                    selected_card.x = columns[new_column][0].x
-                    selected_card.y = COLUMNS_START_Y + (len(columns[new_column]) - 1) * CARD_OFFSET_Y
+                    # Проверка правил перемещения
+                    if (selected_card.is_opposite_color(target_card) and selected_card.is_one_rank_higher(
+                            target_card)) or \
+                            (selected_card.rank == 14 and len(columns[new_column]) == 0):  # Король на пустое место
+
+                        columns[new_column].append(selected_card)
+                        columns[selected_card.column].remove(selected_card)
+
+                        if len(columns[selected_card.column]) > 0:
+                            columns[selected_card.column][-1].face_up = True
+
+                        selected_card.column = new_column
+                        selected_card.x = columns[new_column][0].x
+                        selected_card.y = COLUMNS_START_Y + (len(columns[new_column]) - 1) * CARD_OFFSET_Y
+                    else:
+                        selected_card.x = start_x
+                        selected_card.y = start_y
                 else:
                     selected_card.x = start_x
                     selected_card.y = start_y
