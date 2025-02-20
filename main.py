@@ -47,7 +47,6 @@ class Card:
         self.rect = self.image.get_rect(topleft=(x, y))
 
     def show(self):
-        # print(self.rect)
         if self.face_up:
             screen.blit(self.image, self.rect.topleft)
         else:
@@ -64,6 +63,20 @@ class Card:
         return self.rank == other_card.rank - 1
 
 
+class Foundation:
+    def __init__(self, x, y, suit):
+        self.x = x
+        self.y = y
+        self.suit = suit
+        self.cards = []
+        self.image = pygame.image.load(f"data/cards/empty.png")
+        self.image = pygame.transform.smoothscale(self.image, (CARD_WIDTH, CARD_HEIGHT))
+        self.rect = self.image.get_rect(topleft=(x, y))
+
+    def show(self):
+        screen.blit(self.image, self.rect.topleft)
+
+
 def create_deck():
     suits = ['C', 'D', 'H', 'S']
     ranks = list(range(6, 15))
@@ -76,10 +89,12 @@ def distribute_cards(deck):
     columns = [[] for _ in range(7)]
     empty_cards = []
     index = 0
+    rem_sp = []
     for i in range(7):
         empty_cards.append(EmptyCard(COLUMNS_START_X + i * COLUMN_SPACING, COLUMNS_START_Y))
         for j in range(i + 1):
             card = deck[index]
+            rem_sp.append(card)
             x = card.x = COLUMNS_START_X + i * COLUMN_SPACING
             y = card.y = COLUMNS_START_Y + j * CARD_OFFSET_Y
             card.rect.topleft = (x, y)
@@ -88,10 +103,8 @@ def distribute_cards(deck):
             card.column = i
             columns[i].append(card)
             index += 1
-    for i in deck:
-        if i == 0:
-            deck.remove(i)
-            break
+    for i in rem_sp:
+        deck.remove(i)
     return empty_cards, columns
 
 
@@ -105,7 +118,7 @@ if __name__ == '__main__':
     deck = create_deck()
     window = Window()
     size = width, height = window.x, window.y
-    screen = pygame.display.set_mode(size)
+    screen = pygame.display.set_mode(size, )
     running = True
     window.show()
     empty_cards, columns = distribute_cards(deck)
@@ -115,8 +128,15 @@ if __name__ == '__main__':
     offset_y = 0
     dragging = False
 
+    foundations = []
+    for i in range(4):
+        foundations.append(
+            Foundation((COLUMNS_START_X + 3 * COLUMN_SPACING) + i * COLUMN_SPACING, 10, None))
+
     while running:
         screen.blit(window.image, (0, 0))
+        for i in foundations:
+            i.show()
         for i in empty_cards:
             i.show()
         for i in deck:
@@ -130,9 +150,10 @@ if __name__ == '__main__':
                 running = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN:  # начало перетаскивания
+                selected_card = None
                 mouse_pos = event.pos
                 for column in columns:
-                    for card in reversed(column):
+                    for card in column:
                         if card.is_clicked(mouse_pos) and card.face_up:
                             selected_card = card
                             start_x, start_y = selected_card.x, selected_card.y
@@ -144,7 +165,12 @@ if __name__ == '__main__':
                 sp = []
                 for column in columns:
                     sp.append(column[-1].rect if len(column) > 0 else True)
-                spp = [selected_card.rect.colliderect(i) for i in sp if i != True]
+                spp = []
+                for i in sp:
+                    if i != True:
+                        spp.append(selected_card.rect.colliderect(i))
+                    else:
+                        spp.append(False)
 
                 empty_sp = []
                 empty_counter = 0
@@ -152,12 +178,25 @@ if __name__ == '__main__':
                     empty_sp.append(empty_cards[empty_counter].rect if len(column) == 0 else True)
                     empty_counter += 1
                 empty_spp = [selected_card.rect.colliderect(i) for i in empty_sp if i != True]
-                print(empty_spp)
                 len_empty_sp = len([x for x in empty_spp if x == True])
 
                 len_sp = len([x for x in spp if x == True])
-                if len_sp > 1:
+
+                if len_empty_sp >= 1 and selected_card.rank == 13:
                     start_column = selected_card.column
+                    new_column = \
+                        [i for i in range(len(empty_sp)) if empty_sp[i] != True and i != selected_card.column][0]
+
+                    columns[new_column].append(selected_card)
+                    columns[selected_card.column].remove(selected_card)
+                    selected_card.column = new_column
+                    if len(columns[start_column]) > 0:
+                        columns[start_column][-1].face_up = True
+                    selected_card.x = empty_cards[new_column].x
+                    selected_card.y = COLUMNS_START_Y + (len(columns[new_column]) - 1) * CARD_OFFSET_Y
+                elif len_sp > 1:
+                    start_column = selected_card.column
+                    clll = [i for i in range(len(spp)) if spp[i] == True and i != selected_card.column]
                     new_column = [i for i in range(len(spp)) if spp[i] == True and i != selected_card.column][0]
 
                     target_card = columns[new_column][-1]
@@ -165,7 +204,6 @@ if __name__ == '__main__':
                     # Проверка правил перемещения
                     if (selected_card.is_opposite_color(target_card) and selected_card.is_one_rank_higher(
                             target_card)):
-
                         columns[new_column].append(selected_card)
                         columns[selected_card.column].remove(selected_card)
 
@@ -179,27 +217,13 @@ if __name__ == '__main__':
                         selected_card.x = start_x
                         selected_card.y = start_y
 
-                elif len_empty_sp >= 1 and selected_card.rank == 13:
-                    start_column = selected_card.column
-                    print([i for i in range(len(empty_spp)) if empty_spp[i] == True])
-                    new_column = \
-                        [i for i in range(len(empty_sp)) if empty_sp[i] != True and i != selected_card.column][0]
 
-                    columns[new_column].append(selected_card)
-                    columns[selected_card.column].remove(selected_card)
-                    selected_card.column = new_column
-                    if len(columns[start_column]) > 0:
-                        columns[start_column][-1].face_up = True
-                    selected_card.x = empty_cards[new_column].x
-                    selected_card.y = COLUMNS_START_Y + (len(columns[new_column]) - 1) * CARD_OFFSET_Y
 
 
                 else:
                     selected_card.x = start_x
                     selected_card.y = start_y
                 dragging = False
-
-
 
 
             elif event.type == pygame.MOUSEMOTION:  # перетаскивание
@@ -213,6 +237,7 @@ if __name__ == '__main__':
             screen.blit(selected_card.image, selected_card.rect.topleft)
 
         pygame.display.flip()
+
         clock.tick(fps)
 
     pygame.quit()
