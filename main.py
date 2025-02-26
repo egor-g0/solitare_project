@@ -43,6 +43,7 @@ class Card:
         self.rank = rank
         self.image = pygame.image.load(f"data/cards/{rank}{suit}.png")
         self.image = pygame.transform.smoothscale(self.image, (CARD_WIDTH, CARD_HEIGHT))
+        self.back_image = BACK_IMAGE
         self.face_up = face_up
         self.rect = self.image.get_rect(topleft=(x, y))
 
@@ -50,7 +51,7 @@ class Card:
         if self.face_up:
             screen.blit(self.image, self.rect.topleft)
         else:
-            screen.blit(BACK_IMAGE, self.rect.topleft)
+            screen.blit(self.back_image, self.rect.topleft)
 
     def is_clicked(self, pos):
         return self.rect.collidepoint(pos)
@@ -69,12 +70,15 @@ class Foundation:
         self.y = y
         self.suit = suit
         self.cards = []
-        self.image = pygame.image.load(f"data/cards/empty.png")
+        self.image = pygame.image.load(f"data/cards/foundation_empty.png")
         self.image = pygame.transform.smoothscale(self.image, (CARD_WIDTH, CARD_HEIGHT))
         self.rect = self.image.get_rect(topleft=(x, y))
 
     def show(self):
         screen.blit(self.image, self.rect.topleft)
+
+    def is_clicked(self, pos):
+        return self.rect.collidepoint(pos)
 
 
 def create_deck():
@@ -122,6 +126,9 @@ if __name__ == '__main__':
     running = True
     window.show()
     empty_cards, columns = distribute_cards(deck)
+    for i in deck:
+        i.back_image = pygame.image.load(f"data/cards/column_card.png")
+        i.back_image = pygame.transform.smoothscale(i.back_image, (CARD_WIDTH, CARD_HEIGHT))
     selected_card = None
     selected_cards = []
     start_x, start_y = None, None
@@ -129,6 +136,7 @@ if __name__ == '__main__':
     offset_y = 0
     dragging = False
     flag = False
+    f_num = False
 
     foundations = []
     for i in range(4):
@@ -139,6 +147,9 @@ if __name__ == '__main__':
         screen.blit(window.image, (0, 0))
         for i in foundations:
             i.show()
+            for j in i.cards:
+                screen.blit(j.image, j.rect.topleft)
+
         for i in empty_cards:
             i.show()
         for i in deck:
@@ -170,6 +181,23 @@ if __name__ == '__main__':
                             offset_x = selected_card.x - event.pos[0]
                             offset_y = selected_card.y - event.pos[1]
                             break
+                if selected_card is None:
+                    for i in foundations:
+                        if len(i.cards) > 0:
+                            if i.is_clicked(mouse_pos):
+                                selected_card = i.cards[-1]
+                                if selected_card.rank == 14:
+                                    selected_card = None
+                                    break
+                                f_num = foundations.index(i)
+                                print(selected_card.rank)
+                                start_x, start_y = selected_card.x, selected_card.y
+                                dragging = True
+                                offset_x = selected_card.x - event.pos[0]
+                                offset_y = selected_card.y - event.pos[1]
+                                selected_card.column = None
+                                break
+
 
             elif event.type == pygame.MOUSEBUTTONUP and selected_card is not None:  # конец перетаскивания
                 sp = []
@@ -192,7 +220,23 @@ if __name__ == '__main__':
 
                 len_sp = len([x for x in spp if x == True])
 
-                if len_empty_sp >= 1 and selected_card.rank == 13:
+                if selected_card.column is None:
+                    clll = [i for i in range(len(spp)) if spp[i] == True]
+                    new_column = [i for i in range(len(spp)) if spp[i] == True][0]
+
+                    target_card = columns[new_column][-1]
+
+                    # Проверка правил перемещения
+                    if (selected_card.is_opposite_color(target_card) and selected_card.is_one_rank_higher(
+                            target_card) and target_card.rank != 14):
+                        columns[new_column].append(selected_card)
+                        foundations[f_num].cards.remove(selected_card)
+                        selected_card.column = new_column
+                        selected_card.x = columns[new_column][0].x
+                        selected_card.y = COLUMNS_START_Y + (len(columns[new_column]) - 1) * CARD_OFFSET_Y
+                    pass
+
+                elif len_empty_sp >= 1 and selected_card.rank == 13:
                     start_column = selected_card.column
                     new_column = \
                         [i for i in range(len(empty_sp)) if empty_sp[i] != True and i != selected_card.column][0]
@@ -257,12 +301,35 @@ if __name__ == '__main__':
                             i.x = start_x
                             i.y = start_y + CARD_OFFSET_Y * (j + 1)
 
+
                 else:
-                    selected_card.x = start_x
-                    selected_card.y = start_y
-                    for j, i in enumerate(selected_cards[1:]):
-                        i.x = start_x
-                        i.y = start_y + CARD_OFFSET_Y * (j + 1)
+                    g = False
+                    if columns[selected_card.column].index(selected_card) == len(columns[selected_card.column]) - 1:
+                        for i in foundations:
+                            if selected_card.rect.colliderect(i.rect):
+                                if len(i.cards) == 0 and selected_card.rank != 14:
+                                    continue
+                                if (len(i.cards) == 0 and selected_card.rank == 14) or (selected_card.suit == i.cards[
+                                    -1].suit and selected_card.rank == i.cards[-1].rank + 1) or (
+                                        i.cards[-1].rank == 14 and selected_card.rank == 6 and selected_card.suit ==
+                                        i.cards[-1].suit):
+                                    if len(columns[selected_card.column]) > 0:
+                                        columns[selected_card.column][
+                                            columns[selected_card.column].index(selected_card) - 1].face_up = True
+                                    i.cards.append(selected_card)
+                                    columns[selected_card.column].remove(selected_card)
+                                    selected_card.x = i.x
+                                    selected_card.y = i.y
+                                    selected_card.column = False
+                                    g = True
+                                    break
+
+                    if not g:
+                        selected_card.x = start_x
+                        selected_card.y = start_y
+                        for j, i in enumerate(selected_cards[1:]):
+                            i.x = start_x
+                            i.y = start_y + CARD_OFFSET_Y * (j + 1)
                 dragging = False
 
 
