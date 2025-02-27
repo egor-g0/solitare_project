@@ -56,8 +56,8 @@ class Card:
         return self.rect.collidepoint(pos)
 
     def is_opposite_color(self, other_card):
-        return (self.suit in ['C', 'S'] and other_card.suit in ['D', 'H']) or \
-            (self.suit in ['D', 'H'] and other_card.suit in ['C', 'S'])
+        return (self.suit in ['C', 'S'] and other_card.suit in ['D', 'H']) or (
+                    self.suit in ['D', 'H'] and other_card.suit in ['C', 'S'])
 
     def is_one_rank_higher(self, other_card):
         return self.rank == other_card.rank - 1
