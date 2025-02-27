@@ -9,6 +9,11 @@ CARD_OFFSET_Y = 30
 BACK_IMAGE = pygame.image.load("data/cards/back.png")
 BACK_IMAGE = pygame.transform.smoothscale(BACK_IMAGE, (CARD_WIDTH, CARD_HEIGHT))
 
+pygame.mixer.init()
+
+flip_sound = pygame.mixer.Sound("data/sounds/flip.wav")
+move_sound = pygame.mixer.Sound("data/sounds/move.wav")
+win_sound = pygame.mixer.Sound("data/sounds/win.wav")
 
 class Window:
     def __init__(self):
@@ -169,7 +174,10 @@ if __name__ == '__main__':
         foundations.append(
             Foundation((COLUMNS_START_X + 3 * COLUMN_SPACING) + i * COLUMN_SPACING, 10, None))
 
-    while running:
+    score = 0
+    font = pygame.font.Font(None, 36)
+
+while running:
         screen.blit(window.image, (0, 0))
         for i in foundations:
             i.show()
@@ -183,10 +191,14 @@ if __name__ == '__main__':
             for j in i:
                 j.show()
 
+        score_text = font.render(f"Score: {score}", True, (255, 255, 255))
+        screen.blit(score_text, (20, 760))
+
         if len([1 for i in foundations if len(i.cards) > 0]) == 4 and len(
                 [1 for i in foundations if i.cards[-1].rank == 13]) == 4:
             im = pygame.image.load(f"data/victory.jpg")
             screen.blit(im, (0, 0))
+            win_sound.play()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -209,6 +221,7 @@ if __name__ == '__main__':
                             card.x += COLUMN_SPACING
                             card.face_up = True
                             deck.up.append(card)
+                            flip_sound.play()
                         elif len(deck.not_up) == 0 and len(deck.up) != 0:
                             for i in reversed(deck.up):
                                 i.face_up = False
@@ -277,6 +290,7 @@ if __name__ == '__main__':
                     len_empty_sp = len([x for x in empty_spp if x == True])
 
                     len_sp = len([x for x in spp if x == True])
+                    flip_sound.play()
 
                     if selected_card.column is None and flag_deck:
                         if len_empty_sp >= 1 and selected_card.rank == 13:
@@ -296,6 +310,7 @@ if __name__ == '__main__':
                             new_column = [i for i in range(len(spp)) if spp[i] == True][0]
 
                             target_card = columns[new_column][-1]
+
 
                             # Проверка правил перемещения
                             if (selected_card.is_opposite_color(target_card) and selected_card.is_one_rank_higher(
@@ -328,6 +343,8 @@ if __name__ == '__main__':
                                         selected_card.y = i.y
                                         selected_card.column = False
                                         g = True
+                                        score += 10
+                                        move_sound.play()
                                         break
                             if not g:
                                 selected_card.x = start_x
@@ -481,4 +498,4 @@ if __name__ == '__main__':
 
         clock.tick(fps)
 
-    pygame.quit()
+
